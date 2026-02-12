@@ -8,19 +8,28 @@ class Gcloud < Formula
   depends_on "python@3.12"
 
   def install
-    (buildpath/".install").write "n"
-    system "./google-cloud-sdk/install.sh",
-           "--quiet",
-           "--path-update", "false",
-           "--command-completion", "false",
-           "--usage-reporting", "false",
-           "--install-dir", prefix
+    # The tarball extracts to buildpath which IS the google-cloud-sdk directory
+    # Copy everything from buildpath to prefix/google-cloud-sdk
+    cp_r buildpath, prefix
 
+    # Run the install script from the parent directory
+    # The install script calculates CLOUDSDK_ROOT_DIR based on script location
+    google_cloud_sdk_root = prefix/"google-cloud-sdk"
+    cd prefix do
+      system "bash", "google-cloud-sdk/install.sh",
+             "--quiet",
+             "--usage-reporting", "false",
+             "--bash-completion", "false",
+             "--path-update", "false",
+             "--rc-path", "false",
+             "--update-installed-components"
+    end
+
+    # Link binaries to bin
     bin.mkpath
-    (prefix/"google-cloud-sdk/bin").find.each do |f|
+    (google_cloud_sdk_root/"bin").find.each do |f|
       if f.file? && f.executable?
-        binname = File.basename(f)
-        bin.install_symlink prefix/"google-cloud-sdk/bin" => binname
+        bin.install_symlink f
       end
     end
   end
